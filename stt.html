@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            color: white;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        .output-box {
+            width: 80%;
+            max-width: 600px;
+            min-height: 150px;
+            padding: 15px;
+            border-radius: 15px;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            background: white;
+            color: black;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn.mic-on {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn.mic-off {
+            background: #FF3B30;
+            color: white;
+        }
+
+        .btn.copy {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn.convert {
+            background: #673AB7;
+            color: white;
+        }
+
+        .custom-select {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            background: #673AB7;
+            color: white;
+            appearance: none;
+            outline: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .custom-select:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #audio-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech to Text</h1>
+
+        <button class="btn mic-on" id="mic-btn">🎤 Start Listening</button>
+        <button class="btn mic-off" id="mic-off-btn" style="display:none;">🔴 Stop Listening</button>
+
+        <div id="text-output" class="output-box" contenteditable="true">Recognized text will appear here...</div>
+
+        <label for="language-select">Select Language:</label>
+        <select id="language-select" class="custom-select">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="ta">Tamil</option>
+        </select>
+
+        <button class="btn convert" id="convert-back-btn">Convert to Speech</button>
+        <button class="btn copy" id="copy-btn">Copy Text</button>
+
+        <div id="audio-container">
+            <h3>Generated Speech:</h3>
+            <audio id="audio-player" controls></audio>
+            <button class="btn" id="download-btn">Download Audio</button>
+        </div>
+    </div>
+
+    <script>
+        const micBtn = document.getElementById('mic-btn');
+        const micOffBtn = document.getElementById('mic-off-btn');
+        const textOutput = document.getElementById('text-output');
+        const languageSelect = document.getElementById('language-select');
+        const audioContainer = document.getElementById('audio-container');
+        const audioPlayer = document.getElementById('audio-player');
+        const downloadBtn = document.getElementById('download-btn');
+
+        let recognition;
+
+        micBtn.addEventListener('click', () => {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = languageSelect.value;
+            recognition.interimResults = true;
+
+            micBtn.style.display = 'none';
+            micOffBtn.style.display = 'inline-block';
+
+            recognition.onresult = (event) => {
+                textOutput.innerText = event.results[0][0].transcript;
+            };
+
+            recognition.onend = () => {
+                micBtn.style.display = 'inline-block';
+                micOffBtn.style.display = 'none';
+            };
+
+            recognition.start();
+        });
+
+        micOffBtn.addEventListener('click', () => {
+            if (recognition) recognition.stop();
+        });
+
+        document.getElementById('convert-back-btn').addEventListener('click', async () => {
+            const text = textOutput.innerText;
+            const language = languageSelect.value;
+
+            if (!text.trim()) {
+                alert('Please enter some text.');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, language }),
+                });
+
+                if (!response.ok) throw new Error('Failed to convert text.');
+
+                const data = await response.json();
+                audioPlayer.src = data.audio_url;
+                downloadBtn.onclick = () => window.open(data.download_url, '_blank');
+                audioContainer.style.display = 'block';
+            } catch (error) {
+                alert('Error processing request.');
+            }
+        });
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const text = textOutput.innerText;
+
+            if (!text.trim()) {
+                alert('No text to copy.');
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Text copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy text.');
+            });
+        });
+    </script>
+</body>
+</html>
