@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to Speech</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #ff9966, #ff5e62);
+            color: white;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        textarea {
+            width: 80%;
+            max-width: 600px;
+            height: 150px;
+            padding: 15px;
+            border-radius: 15px;
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            resize: none;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 20px 10px;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn.convert {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn.copy {
+            background: #2196F3;
+            color: white;
+        }
+
+        .custom-select {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            background: #673AB7;
+            color: white;
+            appearance: none;
+            outline: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .custom-select:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #audio-container {
+            margin-top: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Text to Speech</h1>
+
+        <textarea id="text-input" placeholder="Enter text to convert..."></textarea>
+
+        <label for="language-select">Select Language:</label>
+        <select id="language-select" class="custom-select">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="ta">Tamil</option>
+        </select>
+
+        <div>
+            <button class="btn convert" id="convert-btn">Convert to Speech</button>
+            <button class="btn copy" id="copy-btn">Copy Text</button>
+        </div>
+
+        <div id="audio-container" style="display: none;">
+            <h3>Generated Speech:</h3>
+            <audio id="audio-player" controls></audio>
+            <button class="btn" id="download-btn" style="display: none;">Download Audio</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('convert-btn').addEventListener('click', async () => {
+            const text = document.getElementById('text-input').value;
+            const language = document.getElementById('language-select').value;
+
+            if (!text.trim()) {
+                alert('Please enter some text.');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, language }),
+                });
+
+                if (!response.ok) throw new Error('Failed to convert text.');
+
+                const data = await response.json();
+                document.getElementById('audio-player').src = data.audio_url;
+                document.getElementById('audio-container').style.display = 'block';
+                document.getElementById('download-btn').style.display = 'block';
+                document.getElementById('download-btn').onclick = () => window.open(data.download_url, '_blank');
+            } catch (error) {
+                alert('Error processing request.');
+            }
+        });
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const text = document.getElementById('text-input').value;
+
+            if (!text.trim()) {
+                alert('No text to copy.');
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Text copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy text.');
+            });
+        });
+    </script>
+</body>
+</html>
